@@ -61,16 +61,30 @@ class AxEqB(object):
         return s1 + s2 + s3
 # ----------------------------------------------------------------------------------------------------------------------
 
-    #   def jac(self, x):
-    #       A = self.A.A(x)
-    #       dadx = self.A.dAdx(self.A, x)
-    #       dbdx = self.b.dBdx(x)
-    #
-    #       return dbdx - dadx * x - matrixA(x)
 
 # ---
     def vetorF(self,x):
         return self.b.value(x) - self.A.value(x)*x
+# ----------------------------------------------------------------------------------------------------------------------
+
+# ---
+    def jac(self, x, fExact=True):
+        '''
+        calculo da matriz jacbianda df/dx
+        '''
+
+        if fExact:
+            A    = self.A.value(x) # A
+            dAdx = self.A.deriv(x) # dAdx
+            dbdx = self.b.deriv(x) # dbdx
+            dfdx = dbdx - dAdx * x - A
+        else:
+            f0=self.vetorF(x)
+            dx = 0.1
+            f =self.vetorF(dx+x)
+            dfdx = (f-f0)/dx
+
+        return dfdx
 # ----------------------------------------------------------------------------------------------------------------------
 
 # ---
@@ -127,7 +141,7 @@ class AxEqB(object):
 
         res = abs(self.vetorF(x))
 
-        print('{0:15s}: It = {1:3d}, x = {2:e}, A(x)x = {3:f}, b(x) = {4:f}, Res = {5:e}'.format('picard', i, x,
+        print('{0:15s}: It = {1:4d}, x = {2:e}, A(x)x = {3:f}, b(x) = {4:f}, Res = {5:e}'.format('picard', i, x,
                                                                                                  self.A.value(x) * x,
                                                                                                  self.b.value(x), res))
 # ----------------------------------------------------------------------------------------------------------------------
@@ -139,7 +153,7 @@ class AxEqB(object):
         data criacao:     09/01/2020
         data modificacao: 00/00/0000
         -----------------------------------------------------------
-        metodo de quaisiNetwon: solucao do sistema nao-linear
+        metodo de quaisiNewton: solucao do sistema nao-linear
         A(x)x=b(x)
         -----------------------------------------------------------
         Entrada:
@@ -180,7 +194,7 @@ class AxEqB(object):
 
         res = abs(self.vetorF(x))
 
-        print('{0:15s}: It = {1:3d}, x = {2:e}, A(x)x = {3:f}, b(x) = {4:f}, Res = {5:e}'.format('quasiNewton', i, x,
+        print('{0:15s}: It = {1:4d}, x = {2:e}, A(x)x = {3:f}, b(x) = {4:f}, Res = {5:e}'.format('quasiNewton', i, x,
                                                                                                  self.A.value(x) * x,
                                                                                                  self.b.value(x), res))
 # ----------------------------------------------------------------------------------------------------------------------
@@ -192,7 +206,7 @@ class AxEqB(object):
         data criacao:     09/01/2020
         data modificacao: 00/00/0000
         -----------------------------------------------------------
-        metodo de quaisiNetwonMod: solucao do sistema nao-linear
+        metodo de quaisiNewtonMod: solucao do sistema nao-linear
         A(x)x=b(x)
         -----------------------------------------------------------
         Entrada:
@@ -217,9 +231,9 @@ class AxEqB(object):
         x = x0
         res  = self.vetorF(x)
         res0 = abs(res)
+        # mariz jacobiana aproximada
         Jac = -self.A.value(x)
         for i in range(0,maxIt+1):
-            # mariz jacobiana aproximada
             dx  = -res/Jac
             x  += dx
             res = self.vetorF(x)
@@ -232,7 +246,165 @@ class AxEqB(object):
 
         res = abs(self.vetorF(x))
 
-        print('{0:15s}: It = {1:3d}, x = {2:e}, A(x)x = {3:f}, b(x) = {4:f}, Res = {5:e}'.format('quasiNewton', i, x,
+        print('{0:15s}: It = {1:4d}, x = {2:e}, A(x)x = {3:f}, b(x) = {4:f}, Res = {5:e}'.format('quasiNewtoMod', i, x,
+                                                                                                 self.A.value(x) * x,
+                                                                                                 self.b.value(x), res))
+# ----------------------------------------------------------------------------------------------------------------------
+
+# ---
+    def newton(self, x0=0.0, maxIt=1000, tol=1.e-14, fPlot = True, fExact = True):
+        '''
+        ***********************************************************
+        data criacao:     10/01/2020
+        data modificacao: 00/00/0000
+        -----------------------------------------------------------
+        metodo de newton: solucao do sistema nao-linear
+        A(x)x=b(x)
+        -----------------------------------------------------------
+        Entrada:
+        -----------------------------------------------------------
+        x0 - chute inicial
+        maxIt - numero maximo de iteracoes
+        tol   - tolerancia desejada
+        fPlot - plotagem do historico de convergencia
+        fExact- calculo da matriz jacibua exata ou aproximada
+        -----------------------------------------------------------
+        Saida:
+        -----------------------------------------------------------
+        x  - retorno o valor a raiz
+        -----------------------------------------------------------
+        OBS:
+        -----------------------------------------------------------
+        ***********************************************************
+        '''
+
+        if tol == 0.0:
+            self.tol(type(x0))
+        x = x0
+        res  = self.vetorF(x)
+        res0 = abs(res)
+        for i in range(0,maxIt+1):
+            # mariz jacobiana aproximada
+            Jac = self.jac(x,fExact=fExact)
+            dx  = -res/Jac
+            x  += dx
+            res = self.vetorF(x)
+            # ... plota o historico da convergencia do processo
+            if fPlot :
+                print('{0:4} {1:e} {2:e} {3:e}'.format(i+1,x,res,res/res0))
+            # ... checa a convergencia
+            if abs(res)/res0 < tol:
+                break;
+
+        res = abs(self.vetorF(x))
+
+        print('{0:15s}: It = {1:4d}, x = {2:e}, A(x)x = {3:f}, b(x) = {4:f}, Res = {5:e}'.format('newton', i, x,
+                                                                                                 self.A.value(x) * x,
+                                                                                                 self.b.value(x), res))
+# ----------------------------------------------------------------------------------------------------------------------
+
+# ---
+    def newtonMod(self, x0=0.0, maxIt=1000, tol=1.e-14, fPlot = True):
+        '''
+        ***********************************************************
+        data criacao:     10/01/2020
+        data modificacao: 00/00/0000
+        -----------------------------------------------------------
+        metodo de newtonMod: solucao do sistema nao-linear
+        A(x)x=b(x)
+        -----------------------------------------------------------
+        Entrada:
+        -----------------------------------------------------------
+        x0 - chute inicial
+        maxIt - numero maximo de iteracoes
+        tol   - tolerancia desejada
+        fPlot - plotagem do historico de convergencia
+        -----------------------------------------------------------
+        Saida:
+        -----------------------------------------------------------
+        x  - retorno o valor a raiz
+        -----------------------------------------------------------
+        OBS:
+        -----------------------------------------------------------
+        ***********************************************************
+        '''
+
+        if tol == 0.0:
+            self.tol(type(x0))
+        x = x0
+        res  = self.vetorF(x)
+        res0 = abs(res)
+        # mariz jacobiana aproximada
+        Jac = self.jac(x)
+        for i in range(0,maxIt+1):
+            dx  = -res/Jac
+            x  += dx
+            res = self.vetorF(x)
+            # ... plota o historico da convergencia do processo
+            if fPlot :
+                print('{0:4} {1:e} {2:e} {3:e}'.format(i+1,x,res,res/res0))
+            # ... checa a convergencia
+            if abs(res)/res0 < tol:
+                break;
+
+        res = abs(self.vetorF(x))
+
+        print('{0:15s}: It = {1:4d}, x = {2:e}, A(x)x = {3:f}, b(x) = {4:f}, Res = {5:e}'.format('newtonMod', i, x,
+                                                                                                 self.A.value(x) * x,
+                                                                                                 self.b.value(x), res))
+# ----------------------------------------------------------------------------------------------------------------------
+
+# ---
+    def newtonSec(self, x0=0.0, maxIt=1000, tol=1.e-14, fPlot = True, fExact = True):
+        '''
+        ***********************************************************
+        data criacao:     10/01/2020
+        data modificacao: 00/00/0000
+        -----------------------------------------------------------
+        metodo de newtonSec: solucao do sistema nao-linear
+        A(x)x=b(x)
+        -----------------------------------------------------------
+        Entrada:
+        -----------------------------------------------------------
+        x0 - chute inicial
+        maxIt - numero maximo de iteracoes
+        tol   - tolerancia desejada
+        fPlot - plotagem do historico de convergencia
+        fExact- calculo da matriz jacibua exata ou aproximada
+        -----------------------------------------------------------
+        Saida:
+        -----------------------------------------------------------
+        x  - retorno o valor a raiz
+        -----------------------------------------------------------
+        OBS:
+        -----------------------------------------------------------
+        ***********************************************************
+        '''
+
+        if tol == 0.0:
+            self.tol(type(x0))
+        x = x0
+        res  = self.vetorF(x)
+        res0 = abs(res)
+        # mariz jacobiana aproximada
+        Jac = -self.A.value(x)
+        for i in range(0,maxIt+1):
+            dx  = -res/Jac
+            x0  = x
+            x  += dx
+            res = self.vetorF(x)
+            # mariz jacobiana aproximada
+            Jac = (res - self.vetorF(x0))/(x-x0)
+            # ... plota o historico da convergencia do processo
+            if fPlot :
+                print('{0:4} {1:e} {2:e} {3:e}'.format(i+1,x,res,res/res0))
+            # ... checa a convergencia
+            if abs(res)/res0 < tol:
+                break;
+
+        res = abs(self.vetorF(x))
+
+        print('{0:15s}: It = {1:4d}, x = {2:e}, A(x)x = {3:f}, b(x) = {4:f}, Res = {5:e}'.format('newtonSec', i, x,
                                                                                                  self.A.value(x) * x,
                                                                                                  self.b.value(x), res))
 # ----------------------------------------------------------------------------------------------------------------------
