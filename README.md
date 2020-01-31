@@ -7,3 +7,6 @@ Metodos utilizados:
 Picard
 QuasiNewton
 QuasiNewtonMod
+Newton
+NewtonMod
+NewtonSec
